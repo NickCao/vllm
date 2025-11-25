@@ -310,18 +310,6 @@ RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
     && curl -sS ${GET_PIP_URL} | python${PYTHON_VERSION} \
     && python3 --version && python3 -m pip --version
 
-# Install CUDA development tools and build essentials for runtime JIT compilation
-# (FlashInfer, EP kernels all require compilation at runtime)
-RUN CUDA_VERSION_DASH=$(echo $CUDA_VERSION | cut -d. -f1,2 | tr '.' '-') && \
-    apt-get update -y && \
-    apt-get install -y --no-install-recommends \
-    cuda-nvcc-${CUDA_VERSION_DASH} \
-    cuda-cudart-${CUDA_VERSION_DASH} \
-    cuda-nvrtc-${CUDA_VERSION_DASH} \
-    cuda-cuobjdump-${CUDA_VERSION_DASH} \
-    libcublas-${CUDA_VERSION_DASH} && \
-    rm -rf /var/lib/apt/lists/*
-
 ARG PIP_INDEX_URL UV_INDEX_URL
 ARG PIP_EXTRA_INDEX_URL UV_EXTRA_INDEX_URL
 ARG PIP_KEYRING_PROVIDER UV_KEYRING_PROVIDER
