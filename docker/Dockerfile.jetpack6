@@ -105,7 +105,8 @@ ARG PIP_KEYRING_PROVIDER UV_KEYRING_PROVIDER
 # Activate virtual environment and add uv to PATH
 ENV PATH="/opt/venv/bin:/root/.local/bin:$PATH"
 
-RUN pip list --format freeze | sed 's|\(.*\)==.*|\1; sys_platform="never"|' > /etc/pip/constraint.txt
+# https://github.com/astral-sh/uv/issues/2500
+RUN pip list --format freeze | sed 's|\(.*\)==.*|\1; sys_platform == "never"|' > /etc/pip/constraint.txt
 ENV UV_CONSTRAINT=/etc/pip/constraint.txt
 ENV UV_OVERRIDE=/etc/pip/constraint.txt
 
