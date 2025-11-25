@@ -217,13 +217,6 @@ RUN --mount=type=cache,target=/root/.cache/ccache \
         python3 setup.py bdist_wheel --dist-dir=dist --py-limited-api=cp38; \
     fi
 
-COPY tools/ep_kernels/install_python_libraries.sh /tmp/install_python_libraries.sh
-# Install EP kernels(pplx-kernels and DeepEP)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    export TORCH_CUDA_ARCH_LIST='9.0a 10.0a' && \
-    /tmp/install_python_libraries.sh /tmp/ep_kernels_workspace wheel && \
-    find /tmp/ep_kernels_workspace/nvshmem -name '*.a' -delete
-
 # Check the size of the wheel if RUN_WHEEL_CHECK is true
 COPY .buildkite/check-wheel-size.py check-wheel-size.py
 # sync the default value with .buildkite/check-wheel-size.py
@@ -378,11 +371,6 @@ uv pip list
 
 # Pytorch now installs NVSHMEM, setting LD_LIBRARY_PATH (https://github.com/pytorch/pytorch/blob/d38164a545b4a4e4e0cf73ce67173f70574890b6/.ci/manywheel/build_cuda.sh#L141C14-L141C36)
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-
-# Install EP kernels wheels (pplx-kernels and DeepEP) that have been built in the `build` stage
-RUN --mount=type=bind,from=build,src=/tmp/ep_kernels_workspace/dist,target=/vllm-workspace/ep_kernels/dist \
-    --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system ep_kernels/dist/*.whl --verbose
 
 RUN --mount=type=bind,source=tools/install_gdrcopy.sh,target=/tmp/install_gdrcopy.sh,ro \
     set -eux; \
