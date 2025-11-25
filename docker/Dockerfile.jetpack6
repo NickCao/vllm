@@ -107,6 +107,7 @@ ENV PATH="/opt/venv/bin:/root/.local/bin:$PATH"
 
 RUN python3 -m pip list --format=freeze > /etc/pip/constraint.txt
 ENV UV_CONSTRAINT=/etc/pip/constraint.txt
+ENV UV_OVERRIDE=/etc/pip/constraint.txt
 
 ENV VIRTUAL_ENV="/opt/venv"
 
