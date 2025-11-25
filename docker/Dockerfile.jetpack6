@@ -262,11 +262,6 @@ WORKDIR /vllm-workspace
 ENV DEBIAN_FRONTEND=noninteractive
 ARG TARGETPLATFORM
 
-# TODO (huydhn): There is no prebuilt gdrcopy package on 12.9 at the moment
-ARG GDRCOPY_CUDA_VERSION=12.8
-# Keep in line with FINAL_BASE_IMAGE
-ARG GDRCOPY_OS_VERSION=Ubuntu22_04
-
 SHELL ["/bin/bash", "-c"]
 
 ARG DEADSNAKES_MIRROR_URL
@@ -371,15 +366,6 @@ uv pip list
 
 # Pytorch now installs NVSHMEM, setting LD_LIBRARY_PATH (https://github.com/pytorch/pytorch/blob/d38164a545b4a4e4e0cf73ce67173f70574890b6/.ci/manywheel/build_cuda.sh#L141C14-L141C36)
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-
-RUN --mount=type=bind,source=tools/install_gdrcopy.sh,target=/tmp/install_gdrcopy.sh,ro \
-    set -eux; \
-    case "${TARGETPLATFORM}" in \
-      linux/arm64) UUARCH="aarch64" ;; \
-      linux/amd64) UUARCH="x64" ;; \
-      *) echo "Unsupported TARGETPLATFORM: ${TARGETPLATFORM}" >&2; exit 1 ;; \
-    esac; \
-    /tmp/install_gdrcopy.sh "${GDRCOPY_OS_VERSION}" "${GDRCOPY_CUDA_VERSION}" "${UUARCH}"
 
 # CUDA image changed from /usr/local/nvidia to /usr/local/cuda in 12.8 but will
 # return to /usr/local/nvidia in 13.0 to allow container providers to mount drivers
