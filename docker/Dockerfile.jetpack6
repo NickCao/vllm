@@ -330,6 +330,12 @@ ENV UV_HTTP_TIMEOUT=500
 ENV UV_INDEX_STRATEGY="unsafe-best-match"
 # Use copy mode to avoid hardlink failures with Docker cache mounts
 ENV UV_LINK_MODE=copy
+ENV UV_BREAK_SYSTEM_PACKAGES=1
+
+# https://github.com/astral-sh/uv/issues/2500
+RUN pip list --format freeze | sed 's|\(.*\)==.*|\1; sys_platform == "never"|' > /etc/pip/constraint.txt
+ENV UV_CONSTRAINT=/etc/pip/constraint.txt
+ENV UV_OVERRIDE=/etc/pip/constraint.txt
 
 # Workaround for https://github.com/openai/triton/issues/2507 and
 # https://github.com/pytorch/pytorch/issues/107960 -- hopefully
