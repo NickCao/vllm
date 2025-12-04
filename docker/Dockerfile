@@ -5,8 +5,8 @@
 # docs/contributing/dockerfile/dockerfile.md and
 # docs/assets/contributing/dockerfile-stages-dependency.png
 
-ARG CUDA_VERSION=12.9.1
-ARG PYTHON_VERSION=3.12
+ARG CUDA_VERSION=12.6.68
+ARG PYTHON_VERSION=3.10
 
 # By parameterizing the base images, we allow third-party to use their own
 # base images. One use case is hermetic builds with base images stored in
@@ -19,9 +19,9 @@ ARG PYTHON_VERSION=3.12
 # compatibility with other Linux OSes. The main reason for this is that the
 # glibc version is baked into the distro, and binaries built with one glibc
 # version are not backwards compatible with OSes that use an earlier version.
-ARG BUILD_BASE_IMAGE=nvidia/cuda:${CUDA_VERSION}-devel-ubuntu20.04
+ARG BUILD_BASE_IMAGE=nvcr.io/nvidia/l4t-jetpack:r36.4.0
 # Using cuda base image with minimal dependencies necessary for JIT compilation (FlashInfer, DeepGEMM, EP kernels)
-ARG FINAL_BASE_IMAGE=nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
+ARG FINAL_BASE_IMAGE=nvcr.io/nvidia/l4t-jetpack:r36.4.0
 
 # By parameterizing the Deadsnakes repository URL, we allow third-party to use
 # their own mirror. When doing so, we don't benefit from the transparent
@@ -55,7 +55,7 @@ ARG UV_INDEX_URL=${PIP_INDEX_URL}
 ARG UV_EXTRA_INDEX_URL=${PIP_EXTRA_INDEX_URL}
 
 # PyTorch provides its own indexes for standard and nightly builds
-ARG PYTORCH_CUDA_INDEX_BASE_URL=https://download.pytorch.org/whl
+ARG PYTORCH_CUDA_INDEX_BASE_URL=https://pypi.jetson-ai-lab.io/jp6
 
 # PIP supports multiple authentication schemes, including keyring
 # By parameterizing the PIP_KEYRING_PROVIDER variable and setting it to
@@ -81,6 +81,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ARG GET_PIP_URL
 
+RUN cat <<EOF > /tmp/override.txt
+torch @ https://pypi.jetson-ai-lab.io/jp6/cu126/+f/62a/1beee9f2f1470/torch-2.8.0-cp310-cp310-linux_aarch64.whl#sha256=62a1beee9f2f147076a974d2942c90060c12771c94740830327cae705b2595fc
+torchao @ https://pypi.jetson-ai-lab.io/jp6/cu126/+f/543/f621c5929ad1a/torchao-0.13.0-cp39-abi3-linux_aarch64.whl#sha256=543f621c5929ad1a942fd9b6728a486e239b5db351b45842c57ce65924ae26b0
+torchaudio @ https://pypi.jetson-ai-lab.io/jp6/cu126/+f/81a/775c8af36ac85/torchaudio-2.8.0-cp310-cp310-linux_aarch64.whl#sha256=81a775c8af36ac859fb3f4a1b2f662d5fcf284a835b6bb4ed8d0827a6aa9c0b7
+torchvision @ https://pypi.jetson-ai-lab.io/jp6/cu126/+f/907/c4c1933789645/torchvision-0.23.0-cp310-cp310-linux_aarch64.whl#sha256=907c4c1933789645ebb20dd9181d40f8647978e6bd30086ae7b01febb937d2d1
+numpy<2
+EOF
+ENV UV_OVERRIDE=/tmp/override.txt
+
 # Install system dependencies and uv, then create Python virtual environment
 RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
     && echo 'tzdata tzdata/Zones/America select Los_Angeles' | debconf-set-selections \
@@ -92,6 +101,7 @@ RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
         curl \
         sudo \
         python3-pip \
+        libopenblas0 \
         libibverbs-dev \
         # Upgrade to GCC 10 to avoid https://gcc.gnu.org/bugzilla/show_bug.cgi?id=92519
         # as it was causing spam when compiling the CUTLASS kernels
@@ -146,7 +156,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # can be useful for both `dev` and `test`
 # explicitly set the list to avoid issues with torch 2.2
 # see https://github.com/pytorch/pytorch/pull/123243
-ARG torch_cuda_arch_list='7.0 7.5 8.0 8.9 9.0 10.0 12.0'
+ARG torch_cuda_arch_list='8.7'
 ENV TORCH_CUDA_ARCH_LIST=${torch_cuda_arch_list}
 #################### BASE BUILD IMAGE ####################
 
@@ -312,12 +322,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         --mode wheel \
         ${PPLX_COMMIT_HASH:+--pplx-ref "$PPLX_COMMIT_HASH"} \
         ${DEEPEP_COMMIT_HASH:+--deepep-ref "$DEEPEP_COMMIT_HASH"} && \
-    if [[ -d "/tmp/ep_kernels_workspace/nvshmem" ]]; then find /tmp/ep_kernels_workspace/nvshmem -name '*.a' -delete; fi
+    if [ -d "/tmp/ep_kernels_workspace/nvshmem" ]; then find /tmp/ep_kernels_workspace/nvshmem -name '*.a' -delete; fi
 
 # Check the size of the wheel if RUN_WHEEL_CHECK is true
 COPY .buildkite/check-wheel-size.py check-wheel-size.py
 # sync the default value with .buildkite/check-wheel-size.py
-ARG VLLM_MAX_SIZE_MB=500
+ARG VLLM_MAX_SIZE_MB=700
 ENV VLLM_MAX_SIZE_MB=$VLLM_MAX_SIZE_MB
 ARG RUN_WHEEL_CHECK=true
 RUN if [ "$RUN_WHEEL_CHECK" = "true" ]; then \
@@ -372,6 +382,15 @@ ARG DEADSNAKES_MIRROR_URL
 ARG DEADSNAKES_GPGKEY_URL
 ARG GET_PIP_URL
 
+RUN cat <<EOF > /tmp/override.txt
+torch @ https://pypi.jetson-ai-lab.io/jp6/cu126/+f/62a/1beee9f2f1470/torch-2.8.0-cp310-cp310-linux_aarch64.whl#sha256=62a1beee9f2f147076a974d2942c90060c12771c94740830327cae705b2595fc
+torchao @ https://pypi.jetson-ai-lab.io/jp6/cu126/+f/543/f621c5929ad1a/torchao-0.13.0-cp39-abi3-linux_aarch64.whl#sha256=543f621c5929ad1a942fd9b6728a486e239b5db351b45842c57ce65924ae26b0
+torchaudio @ https://pypi.jetson-ai-lab.io/jp6/cu126/+f/81a/775c8af36ac85/torchaudio-2.8.0-cp310-cp310-linux_aarch64.whl#sha256=81a775c8af36ac859fb3f4a1b2f662d5fcf284a835b6bb4ed8d0827a6aa9c0b7
+torchvision @ https://pypi.jetson-ai-lab.io/jp6/cu126/+f/907/c4c1933789645/torchvision-0.23.0-cp310-cp310-linux_aarch64.whl#sha256=907c4c1933789645ebb20dd9181d40f8647978e6bd30086ae7b01febb937d2d1
+numpy<2
+EOF
+ENV UV_OVERRIDE=/tmp/override.txt
+
 RUN PYTHON_VERSION_STR=$(echo ${PYTHON_VERSION} | sed 's/\.//g') && \
     echo "export PYTHON_VERSION_STR=${PYTHON_VERSION_STR}" >> /etc/environment
 
@@ -388,6 +407,7 @@ RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
         libsm6 \
         libxext6 \
         libgl1 \
+        libopenblas0 \
     && if [ ! -z ${DEADSNAKES_MIRROR_URL} ] ; then \
         if [ ! -z "${DEADSNAKES_GPGKEY_URL}" ] ; then \
             mkdir -p -m 0755 /etc/apt/keyrings ; \
@@ -425,10 +445,7 @@ RUN CUDA_VERSION_DASH=$(echo $CUDA_VERSION | cut -d. -f1,2 | tr '.' '-') && \
     cuda-cuobjdump-${CUDA_VERSION_DASH} \
     # https://github.com/vllm-project/vllm/issues/29590
     libcurand-dev-${CUDA_VERSION_DASH} \
-    libcublas-${CUDA_VERSION_DASH} \
-    # Fixes nccl_allocator requiring nccl.h at runtime
-    # https://github.com/vllm-project/vllm/blob/1336a1ea244fa8bfd7e72751cabbdb5b68a0c11a/vllm/distributed/device_communicators/pynccl_allocator.py#L22
-    libnccl-dev && \
+    libcublas-${CUDA_VERSION_DASH} && \
     rm -rf /var/lib/apt/lists/*
 
 ARG PIP_INDEX_URL UV_INDEX_URL
