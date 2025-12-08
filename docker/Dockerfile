@@ -123,6 +123,17 @@ ENV UV_INDEX_STRATEGY="unsafe-best-match"
 # Use copy mode to avoid hardlink failures with Docker cache mounts
 ENV UV_LINK_MODE=copy
 
+RUN mkdir -p /etc/uv && cat <<EOF > /etc/uv/uv.toml
+[[tool.uv.index]]
+name = "pytorch"
+url = "${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.')"
+
+[tool.uv.sources]
+torch = [ { index = "pytorch" } ]
+torchvision = [ { index = "pytorch" } ]
+torchaudio = [ { index = "pytorch" } ]
+EOF
+
 RUN <<EOF
 gcc --version
 EOF
@@ -139,8 +150,7 @@ WORKDIR /workspace
 COPY requirements/common.txt requirements/common.txt
 COPY requirements/cuda.txt requirements/cuda.txt
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --python /opt/venv/bin/python3 -r requirements/cuda.txt \
-    --extra-index-url ${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.')
+    uv pip install --python /opt/venv/bin/python3 -r requirements/cuda.txt
 
 # cuda arch list used by torch
 # can be useful for both `dev` and `test`
@@ -156,7 +166,6 @@ ARG TARGETPLATFORM
 
 ARG PIP_INDEX_URL UV_INDEX_URL
 ARG PIP_EXTRA_INDEX_URL UV_EXTRA_INDEX_URL
-ARG PYTORCH_CUDA_INDEX_BASE_URL
 
 # install build dependencies
 COPY requirements/build.txt requirements/build.txt
@@ -169,8 +178,7 @@ ENV UV_INDEX_STRATEGY="unsafe-best-match"
 ENV UV_LINK_MODE=copy
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --python /opt/venv/bin/python3 -r requirements/build.txt \
-    --extra-index-url ${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.')
+    uv pip install --python /opt/venv/bin/python3 -r requirements/build.txt
 
 WORKDIR /workspace
 
@@ -247,7 +255,6 @@ ARG TARGETPLATFORM
 
 ARG PIP_INDEX_URL UV_INDEX_URL
 ARG PIP_EXTRA_INDEX_URL UV_EXTRA_INDEX_URL
-ARG PYTORCH_CUDA_INDEX_BASE_URL
 
 # install build dependencies
 COPY requirements/build.txt requirements/build.txt
@@ -260,8 +267,7 @@ ENV UV_INDEX_STRATEGY="unsafe-best-match"
 ENV UV_LINK_MODE=copy
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --python /opt/venv/bin/python3 -r requirements/build.txt \
-    --extra-index-url ${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.')
+    uv pip install --python /opt/venv/bin/python3 -r requirements/build.txt
 
 WORKDIR /workspace
 
@@ -326,7 +332,6 @@ FROM base AS dev
 
 ARG PIP_INDEX_URL UV_INDEX_URL
 ARG PIP_EXTRA_INDEX_URL UV_EXTRA_INDEX_URL
-ARG PYTORCH_CUDA_INDEX_BASE_URL
 
 # This timeout (in seconds) is necessary when installing some dependencies via uv since it's likely to time out
 # Reference: https://github.com/astral-sh/uv/pull/1694
@@ -341,8 +346,7 @@ COPY requirements/lint.txt requirements/lint.txt
 COPY requirements/test.txt requirements/test.txt
 COPY requirements/dev.txt requirements/dev.txt
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --python /opt/venv/bin/python3 -r requirements/dev.txt \
-    --extra-index-url ${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.')
+    uv pip install --python /opt/venv/bin/python3 -r requirements/dev.txt
 #################### DEV IMAGE ####################
 
 #################### vLLM installation IMAGE ####################
@@ -441,6 +445,17 @@ ENV UV_INDEX_STRATEGY="unsafe-best-match"
 # Use copy mode to avoid hardlink failures with Docker cache mounts
 ENV UV_LINK_MODE=copy
 
+RUN mkdir -p /etc/uv && cat <<EOF > /etc/uv/uv.toml
+[[tool.uv.index]]
+name = "pytorch"
+url = "${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.')"
+
+[tool.uv.sources]
+torch = [ { index = "pytorch" } ]
+torchvision = [ { index = "pytorch" } ]
+torchaudio = [ { index = "pytorch" } ]
+EOF
+
 # Workaround for https://github.com/openai/triton/issues/2507 and
 # https://github.com/pytorch/pytorch/issues/107960 -- hopefully
 # this won't be needed for future versions of this docker image
@@ -450,8 +465,7 @@ RUN ldconfig /usr/local/cuda-$(echo $CUDA_VERSION | cut -d. -f1,2)/compat/
 # Install vllm wheel first, so that torch etc will be installed.
 RUN --mount=type=bind,from=build,src=/workspace/dist,target=/vllm-workspace/dist \
     --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system dist/*.whl --verbose \
-        --extra-index-url ${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.')
+    uv pip install --system dist/*.whl --verbose
 
 # Install FlashInfer pre-compiled kernel cache and binaries
 # https://docs.flashinfer.ai/installation.html
@@ -484,8 +498,7 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 # Install EP kernels wheels (pplx-kernels and DeepEP) that have been built in the `build` stage
 RUN --mount=type=bind,from=build,src=/tmp/ep_kernels_workspace/dist,target=/vllm-workspace/ep_kernels/dist \
     --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system ep_kernels/dist/*.whl --verbose \
-        --extra-index-url ${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.')
+    uv pip install --system ep_kernels/dist/*.whl --verbose
 
 RUN --mount=type=bind,source=tools/install_gdrcopy.sh,target=/tmp/install_gdrcopy.sh,ro \
     set -eux; \
@@ -515,7 +528,6 @@ ARG PYTHON_VERSION
 
 ARG PIP_INDEX_URL UV_INDEX_URL
 ARG PIP_EXTRA_INDEX_URL UV_EXTRA_INDEX_URL
-ARG PYTORCH_CUDA_INDEX_BASE_URL
 
 # This timeout (in seconds) is necessary when installing some dependencies via uv since it's likely to time out
 # Reference: https://github.com/astral-sh/uv/pull/1694
@@ -533,8 +545,7 @@ RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
 RUN --mount=type=cache,target=/root/.cache/uv \
     CUDA_MAJOR="${CUDA_VERSION%%.*}"; \
     if [ "$CUDA_MAJOR" -ge 12 ]; then \
-        uv pip install --system -r requirements/dev.txt \
-        --extra-index-url ${PYTORCH_CUDA_INDEX_BASE_URL}/cu$(echo $CUDA_VERSION | cut -d. -f1,2 | tr -d '.'); \
+        uv pip install --system -r requirements/dev.txt; \
     fi
 
 # install development dependencies (for testing)
