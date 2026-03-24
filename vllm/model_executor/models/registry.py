@@ -386,6 +386,10 @@ _MULTIMODAL_MODELS = {
         "granite_speech",
         "GraniteSpeechForConditionalGeneration",
     ),
+    "GraniteSpeechRealtimeGeneration": (
+        "granite_speech_realtime",
+        "GraniteSpeechRealtimeGeneration",
+    ),
     "H2OVLChatModel": ("h2ovl", "H2OVLChatModel"),
     "HunYuanVLForConditionalGeneration": (
         "hunyuan_vision",

@@ -118,7 +118,7 @@ class GraniteSpeechMultiModalProcessingInfo(BaseProcessingInfo):
         )
 
     def get_supported_mm_limits(self) -> Mapping[str, int | None]:
-        return {"audio": 1}
+        return {"audio": None}
 
     # There is no limit to the maximum number of audio tokens that can be
     # encoded as features; we pick ~5000 as a number that is probably higher
@@ -129,6 +129,13 @@ class GraniteSpeechMultiModalProcessingInfo(BaseProcessingInfo):
 
     def get_max_audio_len(self):
         return 8000000
+
+    def get_mm_max_tokens_per_item(
+        self,
+        seq_len: int,
+        mm_counts: Mapping[str, int],
+    ) -> Mapping[str, int]:
+        return {"audio": self.get_max_audio_tokens()}
 
 
 ### Input Processing  & Multimodal utils
@@ -219,14 +226,19 @@ class GraniteSpeechDummyInputsBuilder(
         mm_options: Mapping[str, BaseDummyOptions],
     ) -> MultiModalDataDict:
         num_audios = mm_counts.get("audio", 0)
+
+        feature_extractor = self.info.get_hf_processor().audio_processor
+
+        target_audio_length = 30 * feature_extractor.sampling_rate
+
         audio_overrides = mm_options.get("audio")
 
         return {
             "audio": self._get_dummy_audios(
-                length=self.info.get_max_audio_len(),
+                length=target_audio_length,
                 num_audios=num_audios,
                 overrides=audio_overrides,
-            )
+            ),
         }
 
     def get_dummy_text(self, mm_counts: Mapping[str, int]) -> str:
